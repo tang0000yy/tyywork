@@ -1675,9 +1675,25 @@ body.role-student-lesson #stageProgressLine{
 }
 .cert-split-right .cert-shot-thumb{width:100%;}
 @media(max-width:900px){
-  #cert-workspace > .cert-split-row{flex-direction:column; align-items:center; gap:clamp(10px,2vh,20px);}
+  /* Mobile: the task text + fixed-size viewfinder + controls/shoot/contact-
+     sheet stack is simply taller than one phone screen once a couple of
+     shots exist — the desktop version handles this by scrolling ONLY the
+     controls sidebar (.cert-split-right{overflow-y:auto}) while the
+     viewfinder stays flex:1 and fills the rest. On mobile that same trick
+     back-fired: turning the row into a column left the viewfinder as the
+     ONLY flexible (flex:1 1 auto) child while the now-much-taller sidebar
+     was pinned to flex:0 0 auto (never shrinks) — so the fixed-height,
+     overflow:hidden phase container had no choice but to crush the
+     viewfinder down to near-nothing to make the rigid sidebar fit.
+     Fix: let #cert-workspace itself scroll on mobile (instead of clipping),
+     and give every child its own natural (auto) height instead of forcing
+     one one flexible element to eat the deficit. */
+  #cert-workspace{overflow-y:auto; -webkit-overflow-scrolling:touch;}
+  #cert-workspace > .cert-split-row{flex-direction:column; align-items:center; gap:clamp(10px,2vh,20px); flex:0 0 auto;}
   .cert-header{flex:0 0 auto; width:100%; max-width:520px; align-items:center; text-align:center;}
-  .cert-split-right{flex:0 0 auto; width:100%; max-width:420px;}
+  .cert-split-center{flex:0 0 auto; width:100%; max-width:480px;}
+  #cert-workspace #cert-viewfinderFrame.viewfinder.fs-flex-media{height:auto !important; max-height:none !important;}
+  .cert-split-right{flex:0 0 auto; width:100%; max-width:420px; max-height:none; overflow-y:visible;}
   .cert-split-right .cert-controls{flex-direction:row; flex-wrap:wrap; justify-content:center;}
   .cert-split-right .cert-control-group{align-items:center;}
   .cert-split-right .cert-option-row{justify-content:center;}
@@ -1729,7 +1745,20 @@ body.role-student-lesson #stageProgressLine{
 }
 #cert-toIntentBox{margin-top:clamp(16px,2.6vh,28px) !important;}
 @media(max-width:760px){
-  #cert-finalSheet.cert-contact-sheet{flex-direction:column; flex-wrap:wrap; margin:0;}
+  /* Mobile: stacking the row wasn't enough on its own — each card kept
+     .cert-shot-thumb{flex:1 1 0} from the desktop ROW layout, and "flex:1 1
+     0" means "flex-basis:0" along whichever axis is now the main axis
+     (vertical, once the container becomes flex-direction:column) — so every
+     card started from a 0px height and the whole stack collapsed to almost
+     nothing instead of showing each card at its natural (aspect-ratio-
+     derived) height. Also let the screen scroll instead of clipping, since
+     three full-width stacked photo cards are routinely taller than one
+     phone screen. */
+  #cert-finalChoice{overflow-y:auto; -webkit-overflow-scrolling:touch; justify-content:flex-start;}
+  #cert-finalSheet.cert-contact-sheet{
+    flex-direction:column; flex-wrap:wrap; margin:0; flex:0 0 auto; width:100%;
+  }
+  #cert-finalSheet .cert-shot-thumb{flex:0 0 auto; width:100%;}
 }
 
 /* ---------- 05 摄影意图 cert-intentCard — clear "big heading, then a
@@ -1787,7 +1816,7 @@ body.role-student-lesson #stageProgressLine{
    attention, so it's dropped here — the same three questions are still
    introduced earlier in the lesson. */
 #screen-shoot .reminder3{display:none;}
-#screen-shoot > .screen-column > .eyebrow{align-self:flex-start; margin-bottom:0;}
+#screen-shoot > .screen-column > .eyebrow{align-self:flex-start; margin-bottom:clamp(4px,0.8vh,10px);}
 #screen-shoot h1.big{
   align-self:flex-start; text-align:left !important; margin:2px 0 0 !important;
   font-size:clamp(16px, 2vh, 22px) !important; font-weight:600;
@@ -1807,7 +1836,7 @@ body.role-student-lesson #stageProgressLine{
 #screen-submit > .screen-column{
   align-self:center; max-width:min(100%, clamp(760px, 90vw, 1400px));
 }
-#screen-submit > .screen-column > .eyebrow{align-self:flex-start; margin-bottom:0;}
+#screen-submit > .screen-column > .eyebrow{align-self:flex-start; margin-bottom:clamp(4px,0.8vh,10px);}
 #screen-submit h1.big{
   align-self:flex-start; text-align:left !important; margin:2px 0 0 !important;
   padding-bottom:clamp(10px,1.6vh,16px); border-bottom:1px solid var(--border); width:100%;
@@ -2876,6 +2905,14 @@ function syncChromeVars(){
   // here anymore — showing/hiding it (or the reveal-concept/qual-mode
   // buttons it renders) must never push #app or resize any lesson screen.
   var topH = tb ? tb.getBoundingClientRect().height : 0;
+  // student-lesson mode hides the real #topbar (topH would be 0) but still
+  // shows a small floating camera icon top-left (.teacher-entry, the "back
+  // into teacher mode" control — see its CSS). Without reserving space for
+  // it, every screen's eyebrow/heading — which starts flush top-left too —
+  // renders directly underneath it, especially cramped on narrow phones.
+  if(document.body.classList.contains('role-student-lesson')){
+    topH = Math.max(topH, 56);
+  }
   root.setProperty('--topbar-h', topH + 'px');
   if(bn) root.setProperty('--bottomnav-h', (bn.classList.contains('hidden') ? 0 : bn.getBoundingClientRect().height) + 'px');
 }
